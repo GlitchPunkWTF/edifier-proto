@@ -41,7 +41,7 @@ Inside the packet are a length byte, a command byte, and a data array (optional)
 ### W820NB commands
 
 | name                                      | CMD |    request     |                  response                   |
-|-------------------------------------------|:---:|:--------------:|:-------------------------------------------:|
+|:------------------------------------------|:---:|:--------------:|:-------------------------------------------:|
 | [track](#track) title                     | 01  |                |                    UTF-8                    |
 | [track](#track) author                    | 02  |                |                    UTF-8                    |
 | [prompt volume](#prompt-volume) get       | 05  |    {empty}     |                   {00-0f}                   |
@@ -71,24 +71,34 @@ Inside the packet are a length byte, a command byte, and a data array (optional)
 | [**UNKNOWN**](#prompt-volume) set         | fa  |      {xx}      |                    {xx}                     |
 
 #### Track
+
 > track info from AVRCP, read-only, glitch sometimes
+
 #### Prompt volume
+
 > represents voice comments volume, value 0-15
 > cmd {f9-fa} implicitly linked with prompt volume
+
 #### Game mode
+
 > toggle low latency mode
 > + 00 - off
 > + 01 - on
+
 #### ANC, Ambient mode
+
 > mode:
-> + 01 - disabled 
+> + 01 - disabled
 > + 02 - ANC
 > + 03 - Ambient
+>
 > ambient volume {03-09} (optional for request)
 > + 09 - +3
 > + 06 - 0
 > + 03 - -3
+
 #### send button
+
 > **Bluetooth only**
 > code:
 > + 00 - play
@@ -97,14 +107,104 @@ Inside the packet are a length byte, a command byte, and a data array (optional)
 > + 03 - vol- `windows only ? emulate keyboard key`
 > + 04 - next track
 > + 05 - prev track
+
 #### playback state
+
 > triggers on track change or query
 > + 03 - pause
 > + 0d - play
+
 #### Bluetooth device name
+
 > any UTF-8, byte array sequence, len 0-35.
+
 #### Shutdown timer
+
 > value in [u]int16
 > + {d1} - take value in minutes, on 00 shutdowns immediately
 > + {d3} - returns the selected value (len 2)
 > + {d3} - timer disabled {00} (len 1)
+
+### Other commands
+
+> Responses are unknown, you may open PR to add new models
+
+| name                                   | CMD |          request           | note                          |
+|:---------------------------------------|:---:|:--------------------------:|:------------------------------|
+| fit detection start                    | 26  |          {empty}           |                               |
+| fit detection stop                     | 27  |          {empty}           |                               |
+| LHDC codec settings set                | 38  |          {00-03}           |                               |
+| EQ get                                 | 43  |          {empty}           |                               |
+| EQ set                                 | 44  |            [EQ]            |                               |
+| EQ reset                               | 45  |          {empty}           |                               |
+| EQ profile select                      | 46  | [EQ]+[header]+[UTF-8 name] |                               |
+| EQ profile add/rename                  | 47  |   [header]+[UTF-8 name]    |                               |
+| "LightTurnOffColorSetActivity" on open | 5f  |          {empty}           |                               |
+| source [S3000 model] get               | 61  |          {00}{00}          | LEN=0xEC                      |
+| source [S3000 model] set               | 62  |    {00}{00}{01}{01-06}     | LEN=0xEC                      |
+| light effects get                      | 69  |          {empty}           |                               |
+| light effects set                      | 70  |        {00}{00-04}         |                               |
+| EQ preset set                          | c4  |         [unknown]          |                               |
+| vibro set                              | d9  |        {0b00000xyz}        |                               |
+| tap settings get                       | f0  |     {01-02} `channel`      | may differ<br/>between models |
+| tap settings set                       | f1  |       {01-02}{mode}        | may differ<br/>between models |
+| fit detection on open                  | f2  |          {empty}           |                               |
+| wearing detection get                  | fb  |          {empty}           |                               |
+| wearing detection set                  | fc  |        {00}{00-02}         |                               |
+| tap sensitivity get                    | fd  |          {empty}           |                               |
+| tap sensitivity set                    | fe  |          {00-31}           |                               |
+
+---
+
+## Python POC
+
+Proof of concept of ability to send commands via BLE
+
+> Device host two bluetooth entities: classic for audio and BLE for configuration, named "EDIFIER BLE"
+>
+> Program will try to connect to BLE device by name
+
+### Requirements
+
++ python3
++ [bleak](https://pypi.org/project/bleak/) library
++ download [poc.py](poc.py)
+
+### Functions
+
++ automatic parsing of received packets, string extraction
+sending packet dump, raw command and brute force to find command or data values
+
+### Usage
+
++ set device BLE MAC to `MAC_ADDR` [3-rd byte of BT classic MAC is 00] or just
+start to scan and connect to any "EDIFIER BLE" device
+
+
++ paste dumped packet in hexadecimal view, program check CRC and send it
+
+
++ type 'r' to send raw packet - program will form packet and send it
+    + type CMD in hex
+    + type DATA in hex
+    + or enter UTF-8 CMDs in `UTF8_LIST_OUT` and just type in regular text
+    + to add readability for reply command enter CMDs in `UTF8_LIST_IN` for UTF-8 and `DEC_LIST_IN` for decimal 
+
+
++ type 'w' to bruteforce available CMDs, just check responses, but some command may be dangerous
+    + type some hexadecimal value to check it, or just write 00
+    + check response to find commands with reply
+    + try to escape known and dangerous CMDs in `ESCAPE_LIST` array
+
+
++ type 's' to bruteforce available single byte DATA
+    + type CMD in hex
+
+
++ type 'q' to quit
+
+---
+
+## Open PR
+
+May same device or want to add new? Open PR and fill table with obtained data
