@@ -1,3 +1,9 @@
+# Flutter Edifier Control App
+
+![logo](asset/icons/play_store_512.png)
+
+> Logo by [icon.kitchen](https://icon.kitchen)
+
 # Edifier Bluetooth/BLE control protocol analysis
 
 > Disclaimer: Using this software may cause damage to your device! Use at your own risk!
